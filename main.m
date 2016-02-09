@@ -1,159 +1,74 @@
-%% Setup some constants
-% 1) Change this to the location of the script
-base_dir = ['/Users/mezhaka/science/marburg_repo/journal/' ...
-    'porous particles/blees_leyte_validation'];
-cd(base_dir);
-simulations_dir = fullfile(base_dir, 'reviewer3_simulations');
-
-fcc_porosity_folders = {'0.2595',  '0.3500',  '0.4500',  '0.5500',  '0.6500', ...
-'0.3000',  '0.4000',  '0.5000',  '0.6000',  '0.7000'};
-
-sc_porosity_folders = { '0.476', '0.500', '0.550', '0.600',  '0.650', ...
-'0.700'};
-
-%% Extract new simulation data and write it to text files
-[density_longitudinal_transverse, f]= ...
-    ExtractAssymptoticDiffusionFromTransient(fcc_porosity_folders, 'fcc', simulations_dir);
-close(f);
-WriteTableToFile(fullfile(base_dir, 'fcc_additional_porous_simulation.txt'), ...
-	'density\teffective_diffusion\n', density_longitudinal_transverse(:,1:2));
-
-[density_longitudinal_transverse, f]= ...
-    ExtractAssymptoticDiffusionFromTransient(sc_porosity_folders, 'sc', simulations_dir);
-close(f);
-WriteTableToFile(fullfile(base_dir, 'sc_additional_porous_simulation.txt'), ...
-	'density\teffective_diffusion\n', density_longitudinal_transverse(:,1:2));
-
-%% Compute D_eff = D_eff(phi) and write it to text files
-% based on the convergence data I decided to truncate the system:
-max_l = 21;
-
-D1 = .1;
-D2 = 1;
-C1 = 1;
-C2 = 1;
-
-fcc_phi_max = pi/6 * sqrt(2);
-fcc_phi_range = linspace(0.3, fcc_phi_max, 50);
-fcc_D_eff = [];
-for phi = fcc_phi_range 
-    phi
-    [D_eff, A, c] = ComputeInversion(phi, fcc_phi_max, D1, C1, D2, C2, ...
-        max_l, @fcc_S_reciprocal_cached);
-    fcc_D_eff(end+1) = D_eff;
-end
-WriteTableToFile(fullfile(base_dir, 'fcc_additional_porous_inversion_method.txt'), ...
-	'density\teffective_diffusion\n', [fcc_phi_range' real(fcc_D_eff')]);
-
-sc_phi_max = pi/6;
-sc_phi_range = linspace(0.3, sc_phi_max, 50);
-sc_D_eff = [];
-for phi = sc_phi_range 
-    phi
-    [D_eff, A, c] = ComputeInversion(phi, sc_phi_max, D1, C1, D2, C2, ...
-        max_l, @sc_S_reciprocal_cached);
-    sc_D_eff(end+1) = D_eff;
-end
-WriteTableToFile(fullfile(base_dir, 'sc_additional_porous_inversion_method.txt'), ...
-	'density\teffective_diffusion\n', [sc_phi_range' real(sc_D_eff')]);
-
-
-
-% global fcc_S_lm;
-% global fcc_S_lm_negative;
-% global sc_S_lm;
-% global sc_S_lm_negative;
-% fcc_S_lm = nan(2);
-% sc_S_lm = nan(2);
-% fcc_S_lm_negative = nan(2);
-% sc_S_lm_negative = nan(2);
-
-%%
-fcc_porosity_folders = {'0.2595',  '0.3500',  '0.4500',  '0.5500',  '0.6500', ...
-'0.3000',  '0.4000',  '0.5000',  '0.6000',  '0.7000'};
-density_longitudinal_transverse = ...
-    ExtractAssymptoticDiffusionFromTransient(fcc_porosity_folders, 'fcc', base_dir);
-
-
-D1 = .1;
-D2 = 1;
-C1 = 1;
-C2 = 1;
-
-fcc_phi_max = pi/6 * sqrt(2);
-
-% [D_eff4, Acache, c] = ComputeInversion(phi, fcc_phi_max, D1, C1, D2, C2, 7, @fcc_S_reciprocal_cached);
-% [D_eff,  A, c] = ComputeInversion(phi, fcc_phi_max, D1, C1, D2, C2, 7, @fcc_S_reciprocal_cached);
-% isequal(Acache, A)
-
-D = [];
-porosities_fcc = cell2num(Map(@str2num, fcc_porosity_folders));
-densities_fcc = 1 - porosities_fcc;
-max_l = 40;
-for i = 1:numel(densities_fcc)
-    phi = densities_fcc(i);
-    [D_eff, A, c] = ComputeInversion(phi, fcc_phi_max, D1, C1, D2, C2, max_l, @fcc_S_reciprocal_cached);
-    D(i) = D_eff;
-end
-hold on; 
-plot(densities_fcc, real(D), 's', ...
-    'DisplayName', sprintf('Inversion method, l = %i', max_l));
-legend('hide'); legend('show');
-
-%%
-% global fcc_S_lm;
-% global fcc_S_lm_negative;
-% global sc_S_lm;
-% global sc_S_lm_negative;
-% fcc_S_lm = nan(2);
-% sc_S_lm = nan(2);
-% fcc_S_lm_negative = nan(2);
-% sc_S_lm_negative = nan(2);
-
-%phi = .65;
+% This script consists of two parts: The first one is to help visualize how
+% the error in the method of direct inversion converges with the increasing
+% number of lattice sums. The second part plots the effective diffusion
+% coefficients for FCC and SC crystals. One can adjust the diffusion
+% coefficients (D1, D2), effective concentrations (C1, C2), and density
+% (phi) to compute the effective diffusion in the desireable system.
+%% Visualize the convergence of the D_eff for FCC lattice with maximum density.
+%  Plot the dependecy of the D_eff on l -- the number that defines the amount of 
+%  equations in the matrix to compute lattice sums S_{l,m}. 
 phi = fcc_phi_max;
 D = [];
-l_range = 1:2:41;
+l_range = 1:2:21;
 for l = l_range;
-    l
-    [D_eff, A, c] = ComputeInversion(phi, fcc_phi_max, D1, C1, D2, C2, l, @fcc_S_reciprocal_cached);
+    [D_eff, A, ~] = ComputeInversion(phi, fcc_phi_max, D1, C1, D2, C2, l, @fcc_S_reciprocal_cached);
     D(end+1) = D_eff;
 end
+
 figure;
+
+% The horizontal line computes the theoretically derived value with a
+% limited number of terms. According to the paper this value poorly
+% describes the behavior of the system with high density.
 subplot(2, 1, 1);
 title(sprintf('Convergence, \\phi = %f', phi));
 plot(l_range, real(D), 'o');
 hline(ComputeTheoreticalEffectiveDiffusion(phi, 'fcc', D1, C1, D2, C2));
 ylabel('real(D_{eff})');
+
+% Ensure that the imaginary part is negligible
 subplot(2,1, 2);
 plot(l_range, imag(D), 'o');
 ylabel('imag(D_{eff})');
 xlabel('l_max');
 
+%% I played a bit with precision and this amount of terms was enough for me:
+max_l = 21;
 
+% Diffusion coefficient and concentration inside of the particle.
+D1 = .1;
+C1 = 1;
 
-
-%%
-fcc_phi_max = pi/6 * sqrt(2);
-phi = fcc_phi_max;
-% phi = 0.524;
-
-D1 = 1;
+% Diffusion coefficient and concentration in the continuous phase.
 D2 = 1;
-C1 = .1;
 C2 = 1;
-max_l = 7;
-[D_eff,  Acache, c, C] = ComputeInversion(phi, fcc_phi_max, D1, C1, D2, C2, max_l, @fcc_S_reciprocal_cached);
-% [D_eff,  A, c, C] = ComputeInversion(phi, fcc_phi_max, D1, C1, D2, C2, max_l, @fcc_S_reciprocal);
 
-%SC
-r1 = [1 0 0];
-r2 = [0 1 0];
-r3 = [0 0 1];
-h1 = [1 0 0];
-h2 = [0 1 0];
-h3 = [0 0 1];
+% Let's compute effective diffusion for FCC lattice
+% Maximum density of the FCC lattice
+fcc_phi_max = pi/6 * sqrt(2);
+fcc_phi_range = linspace(0.3, fcc_phi_max, 20);
+fcc_D_eff = [];
+for phi = fcc_phi_range 
+    [D_eff, ~, ~] = ComputeInversion(phi, fcc_phi_max, D1, C1, D2, C2, ...
+        max_l, @fcc_S_reciprocal_cached);
+    fcc_D_eff(end+1) = D_eff;
+end
 
-sc_r_basis = [r1; r2; r3];
-sc_h_basis = [h1; h2; h3];
+% Let's compute effective diffusion for SC lattice
+% Maximum density of the SC lattice
+sc_phi_max = pi/6;
+sc_phi_range = linspace(0.3, sc_phi_max, 20);
+sc_D_eff = [];
+for phi = sc_phi_range 
+    [D_eff, A, c] = ComputeInversion(phi, sc_phi_max, D1, C1, D2, C2, ...
+        max_l, @sc_S_reciprocal_cached);
+    sc_D_eff(end+1) = D_eff;
+end
 
+figure;
+plot(fcc_phi_range, real(fcc_D_eff), 'o', 'DisplayName', 'FCC');
+hold on;
+plot(sc_phi_range, real(sc_D_eff), 'o', 'DisplayName', 'SC');
+xlabel('\phi');
+ylabel('D_{eff}');
+legend('show');

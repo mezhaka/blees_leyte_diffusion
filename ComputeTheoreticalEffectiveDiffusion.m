@@ -1,4 +1,6 @@
 function deff_theory = ComputeTheoreticalEffectiveDiffusion(phi, crystal_type, D1, C1, D2, C2)
+% Computes the D_eff according to Appendix B of the Blees and Leyte 1994 (doi: 
+% 10.1006/jcis.1994.1278)
 if isequal(crystal_type, 'fcc')
     phi_max = pi/6 * sqrt(2);
     u4_0 = -1.33036691;

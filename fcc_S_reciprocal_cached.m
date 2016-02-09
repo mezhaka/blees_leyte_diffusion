@@ -1,4 +1,5 @@
 function s = fcc_S_reciprocal_cached(l, m)
+% Computes reciprocal lattice sums for FCC lattice and chaches them.
 global fcc_S_lm;
 global fcc_S_lm_negative;
 
