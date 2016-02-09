@@ -1,4 +1,5 @@
 function s = sc_S_reciprocal_cached(l, m)
+% Computes reciprocal lattice sums for SC lattice and chaches them.
 global sc_S_lm;
 global sc_S_lm_negative;
 
